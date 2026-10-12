@@ -1,8 +1,8 @@
-// Package supervisor holds the restart policy: exponential backoff with
+// Package restart holds the restart policy: exponential backoff with
 // jitter, and a sliding-window circuit breaker that gives up on a server
 // that keeps crashing. Both are pure and clock-injected so they test
 // deterministically.
-package supervisor
+package restart
 
 import (
 	"math"

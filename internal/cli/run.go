@@ -16,8 +16,8 @@ import (
 	"github.com/anthonycoffey/mcp-warden/internal/metrics"
 	"github.com/anthonycoffey/mcp-warden/internal/procscan"
 	"github.com/anthonycoffey/mcp-warden/internal/proxy"
+	"github.com/anthonycoffey/mcp-warden/internal/restart"
 	"github.com/anthonycoffey/mcp-warden/internal/state"
-	"github.com/anthonycoffey/mcp-warden/internal/supervisor"
 )
 
 func runCmd(env Env, args []string) int {
@@ -100,7 +100,7 @@ func runCmd(env Env, args []string) int {
 			fmt.Fprintln(env.Stderr, line)
 			fileLog.Debug("server stderr", "line", line)
 		},
-		Backoff:       supervisor.Backoff{Base: *backoffBase, Max: *backoffMax, Factor: 2, Jitter: 0.2},
+		Backoff:       restart.Backoff{Base: *backoffBase, Max: *backoffMax, Factor: 2, Jitter: 0.2},
 		MaxRestarts:   *maxRestarts,
 		RestartWindow: *window,
 		BufferSize:    *bufSize,

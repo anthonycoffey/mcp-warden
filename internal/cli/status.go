@@ -1,11 +1,8 @@
 package cli
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
-	"io"
-	"os"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -45,9 +42,6 @@ func liveChildPIDs(views []instanceView) classify.Instances {
 	}
 	return inst
 }
-
-// ---------------------------------------------------------------------------
-// status
 
 type scanSummary struct {
 	Time       time.Time `json:"time"`
@@ -192,141 +186,6 @@ func writeJSON(env Env, v any) int {
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(v); err != nil {
 		return fail(env, "%v", err)
-	}
-	return 0
-}
-
-// ---------------------------------------------------------------------------
-// logs
-
-func logsCmd(env Env, args []string) int {
-	fs := newFlags(env, "logs", "<name> [-f] [-n lines]")
-	follow := fs.Bool("f", false, "follow the log as it grows")
-	lines := fs.Int("n", 100, "number of trailing lines to print (0 = all)")
-	dirFlag := stateDirFlag(fs)
-	// Allow the name before or after flags.
-	var name string
-	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
-		name, args = args[0], args[1:]
-	}
-	if code, ok := parse(fs, args); !ok {
-		return code
-	}
-	if name == "" && fs.NArg() > 0 {
-		name = fs.Arg(0)
-	}
-	if err := state.ValidateName(name); err != nil {
-		fs.Usage()
-		return 2
-	}
-	dir := resolveDir(*dirFlag, state.DefaultDir)
-	path := state.LogPath(dir, name)
-
-	f, err := os.Open(path)
-	if err != nil {
-		return fail(env, "no log for %q (%v)", name, err)
-	}
-	defer f.Close()
-	if err := tail(f, env.Stdout, *lines); err != nil {
-		return fail(env, "%v", err)
-	}
-	if !*follow {
-		return 0
-	}
-	return followFile(env, f, path)
-}
-
-// tail prints the last n lines of r (all if n <= 0).
-func tail(r io.Reader, w io.Writer, n int) error {
-	sc := bufio.NewScanner(r)
-	sc.Buffer(nil, 1<<20)
-	var ring []string
-	for sc.Scan() {
-		if n > 0 && len(ring) == n {
-			ring = ring[1:]
-		}
-		ring = append(ring, sc.Text())
-	}
-	for _, l := range ring {
-		fmt.Fprintln(w, l)
-	}
-	return sc.Err()
-}
-
-// followFile polls for new data, reopening the file when it is rotated.
-func followFile(env Env, f *os.File, path string) int {
-	offset, _ := f.Seek(0, io.SeekEnd)
-	for {
-		time.Sleep(500 * time.Millisecond)
-		info, err := os.Stat(path)
-		if err != nil {
-			continue
-		}
-		if info.Size() < offset { // rotated
-			f.Close()
-			if f, err = os.Open(path); err != nil {
-				continue
-			}
-			offset = 0
-		}
-		if info.Size() > offset {
-			f.Seek(offset, io.SeekStart)
-			n, _ := io.Copy(env.Stdout, f)
-			offset += n
-		}
-	}
-}
-
-// ---------------------------------------------------------------------------
-// reap
-
-func reapCmd(env Env, args []string) int {
-	fs := newFlags(env, "reap", "[--dry-run]")
-	dryRun := fs.Bool("dry-run", false, "show what would be killed without killing")
-	dirFlag := stateDirFlag(fs)
-	if code, ok := parse(fs, args); !ok {
-		return code
-	}
-	dir := resolveDir(*dirFlag, state.DefaultDir)
-	entries, err := state.List(dir)
-	if err != nil {
-		return fail(env, "%v", err)
-	}
-	procs, err := procscan.Snapshot()
-	if err != nil {
-		return fail(env, "snapshot processes: %v", err)
-	}
-	idx := procscan.NewIndex(procs)
-
-	stale := 0
-	for _, e := range entries {
-		in := e.Instance
-		if procscan.Alive(in.WardenPID, in.WardenCreatedAt) {
-			continue
-		}
-		stale++
-		root, ok := idx.ByPID[in.ChildPID]
-		alive := ok && in.ChildPID > 0 && !in.ChildStartedAt.IsZero() && procscan.SameTime(root.CreateTime, in.ChildStartedAt)
-		switch {
-		case !alive:
-			fmt.Fprintf(env.Stdout, "%s: warden %d is gone and left nothing running\n", in.Name, in.WardenPID)
-		case *dryRun:
-			n := 1 + len(idx.Descendants(root.PID))
-			fmt.Fprintf(env.Stdout, "%s: would kill %d process(es) rooted at pid %d (%s)\n", in.Name, n, root.PID, truncate(root.Cmdline, 60))
-			continue
-		default:
-			killed, err := procscan.KillTree(idx, root)
-			fmt.Fprintf(env.Stdout, "%s: killed %d process(es) rooted at pid %d\n", in.Name, len(killed), root.PID)
-			if err != nil {
-				fmt.Fprintf(env.Stderr, "  warning: %v\n", err)
-			}
-		}
-		if !*dryRun {
-			os.Remove(e.Path)
-		}
-	}
-	if stale == 0 {
-		fmt.Fprintln(env.Stdout, "Nothing to reap: every recorded mcp-warden instance is alive.")
 	}
 	return 0
 }

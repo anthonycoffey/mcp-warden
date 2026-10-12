@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/anthonycoffey/mcp-warden/internal/jsonrpc"
+	"github.com/anthonycoffey/mcp-warden/internal/restart"
 	"github.com/anthonycoffey/mcp-warden/internal/state"
-	"github.com/anthonycoffey/mcp-warden/internal/supervisor"
 )
 
 // ---------------------------------------------------------------------------
@@ -166,7 +166,7 @@ func start(t *testing.T, behaviors func(gen int) behavior, tweak func(*Config)) 
 			default:
 			}
 		},
-		Backoff:       supervisor.Backoff{Base: 5 * time.Millisecond, Max: 20 * time.Millisecond, Factor: 2},
+		Backoff:       restart.Backoff{Base: 5 * time.Millisecond, Max: 20 * time.Millisecond, Factor: 2},
 		RestartWindow: time.Minute,
 		InitTimeout:   time.Second,
 		Grace:         200 * time.Millisecond,
@@ -374,7 +374,7 @@ func TestCircuitBreakerOpens(t *testing.T) {
 func TestRestartBufferBoundsAndFlushes(t *testing.T) {
 	h := start(t, always(behavior{}), func(c *Config) {
 		c.BufferSize = 1
-		c.Backoff = supervisor.Backoff{Base: 300 * time.Millisecond, Factor: 1}
+		c.Backoff = restart.Backoff{Base: 300 * time.Millisecond, Factor: 1}
 	})
 	h.handshake()
 	h.send(`{"jsonrpc":"2.0","id":2,"method":"crash"}`)
