@@ -164,3 +164,36 @@ func TestFormatting(t *testing.T) {
 		}
 	}
 }
+
+func TestLeftovers(t *testing.T) {
+	t0 := time.Date(2026, 10, 12, 9, 0, 0, 0, time.UTC)
+	at := func(s int) time.Time { return t0.Add(time.Duration(s) * time.Second) }
+	inst := state.Instance{ChildPID: 100, ChildStartedAt: at(10)}
+
+	// Server exited; its grandchild lives on in the server's process group.
+	idx := procscan.NewIndex([]procscan.Process{
+		{PID: 200, PPID: 1, PGID: 100, CreateTime: at(11)},
+		{PID: 201, PPID: 200, PGID: 100, CreateTime: at(12)},
+	})
+	if got := leftovers(idx, inst); len(got) != 1 || got[0].PID != 200 {
+		t.Errorf("dead server: leftovers = %+v, want root 200 (201 is its descendant)", got)
+	}
+
+	// Server alive: its tree, with group members it already covers not repeated.
+	idx = procscan.NewIndex([]procscan.Process{
+		{PID: 100, PPID: 1, PGID: 100, CreateTime: at(10)},
+		{PID: 101, PPID: 100, PGID: 100, CreateTime: at(11)},
+	})
+	if got := leftovers(idx, inst); len(got) != 1 || got[0].PID != 100 {
+		t.Errorf("live server: leftovers = %+v", got)
+	}
+
+	// PID 100 now belongs to an unrelated, newer process: touch nothing.
+	idx = procscan.NewIndex([]procscan.Process{
+		{PID: 100, PPID: 1, PGID: 100, CreateTime: at(500)},
+		{PID: 300, PPID: 100, PGID: 100, CreateTime: at(501)},
+	})
+	if got := leftovers(idx, inst); got != nil {
+		t.Errorf("reused pid: leftovers = %+v, want none", got)
+	}
+}

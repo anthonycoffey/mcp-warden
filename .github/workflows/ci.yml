@@ -32,6 +32,7 @@ jobs:
         env:
           CGO_ENABLED: "1"
       - name: Benchmark smoke run
+        shell: bash
         run: go test -run=^$ -bench=. -benchtime=200x ./internal/proxy/
 
   lint:

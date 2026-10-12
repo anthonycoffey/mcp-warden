@@ -23,6 +23,7 @@ func snapshot() ([]Process, error) {
 		p := Process{
 			PID:        int(kp.Proc.P_pid),
 			PPID:       int(kp.Eproc.Ppid),
+			PGID:       int(kp.Eproc.Pgid),
 			Name:       commName(kp.Proc.P_comm[:]),
 			CreateTime: startTime(kp),
 			// RSS needs proc_pidinfo from libproc, which is only reachable

@@ -61,6 +61,7 @@ func snapshot() ([]Process, error) {
 
 type stat struct {
 	ppid      int
+	pgid      int
 	state     byte
 	startTime time.Time
 	rssPages  uint64
@@ -74,15 +75,16 @@ func parseStat(data []byte) (stat, bool) {
 		return stat{}, false
 	}
 	f := strings.Fields(string(data[end+2:]))
-	// f[0]=state(3) f[1]=ppid(4) … f[19]=starttime(22) f[21]=rss(24)
+	// f[0]=state(3) f[1]=ppid(4) f[2]=pgrp(5) … f[19]=starttime(22) f[21]=rss(24)
 	if len(f) < 22 {
 		return stat{}, false
 	}
 	ppid, _ := strconv.Atoi(f[1])
+	pgid, _ := strconv.Atoi(f[2])
 	ticks, _ := strconv.ParseUint(f[19], 10, 64)
 	rss, _ := strconv.ParseUint(f[21], 10, 64)
 	start := boot().Add(time.Duration(ticks) * time.Second / clockTicks)
-	return stat{ppid: ppid, state: f[0][0], startTime: start, rssPages: rss}, true
+	return stat{ppid: ppid, pgid: pgid, state: f[0][0], startTime: start, rssPages: rss}, true
 }
 
 func read(pid int) (Process, error) {
@@ -98,6 +100,7 @@ func read(pid int) (Process, error) {
 	p := Process{
 		PID:        pid,
 		PPID:       st.ppid,
+		PGID:       st.pgid,
 		CreateTime: st.startTime,
 		RSS:        st.rssPages * uint64(os.Getpagesize()),
 	}

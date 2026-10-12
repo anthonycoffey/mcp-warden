@@ -17,6 +17,7 @@ import (
 type Process struct {
 	PID        int       `json:"pid"`
 	PPID       int       `json:"ppid"`
+	PGID       int       `json:"pgid,omitempty"`    // process group (Unix); 0 on Windows
 	Name       string    `json:"name"`              // executable base name, e.g. "node.exe"
 	Cmdline    string    `json:"cmdline,omitempty"` // full command line, best effort
 	CreateTime time.Time `json:"createTime"`

@@ -59,3 +59,20 @@ func TestAncestorsStopsOnCycle(t *testing.T) {
 		t.Errorf("Ancestors = %v, want just [6]", pids(got))
 	}
 }
+
+func TestGroupMembers(t *testing.T) {
+	idx := NewIndex([]Process{
+		{PID: 100, PGID: 100, CreateTime: at(10)}, // leader
+		{PID: 101, PGID: 100, PPID: 1, CreateTime: at(11)},
+		{PID: 50, PGID: 100, CreateTime: at(5)}, // older than the leader: a reused group id
+		{PID: 102, PGID: 7, CreateTime: at(12)},
+	})
+	got := pids(idx.GroupMembers(100, at(10)))
+	slices.Sort(got)
+	if !slices.Equal(got, []int{100, 101}) {
+		t.Errorf("GroupMembers = %v, want [100 101]", got)
+	}
+	if idx.GroupMembers(100, time.Time{}) != nil {
+		t.Error("an unknown leader creation time must match nothing")
+	}
+}

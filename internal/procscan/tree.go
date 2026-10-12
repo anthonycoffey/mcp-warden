@@ -81,6 +81,26 @@ func (idx *Index) Descendants(pid int) []Process {
 	return out
 }
 
+// GroupMembers returns live processes in process group pgid that were
+// created no earlier than leaderCreated. On Unix a dead warden's server
+// leaves its grandchildren in the group the server led; once their parent
+// has exited they are no longer descendants of anything we know, but the
+// group still identifies them. The creation-time bound ensures a group ID
+// that was later reused cannot pull in unrelated processes. Always empty on
+// Windows, where PGID is not recorded.
+func (idx *Index) GroupMembers(pgid int, leaderCreated time.Time) []Process {
+	if pgid <= 0 || leaderCreated.IsZero() {
+		return nil
+	}
+	var out []Process
+	for _, p := range idx.ByPID {
+		if p.PGID == pgid && !p.CreateTime.Before(leaderCreated.Add(-10*time.Millisecond)) {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 // KillTree kills root and all of its descendants, deepest first so that no
 // parent gets a chance to respawn a child. It returns the processes it
 // killed; identity mismatches and already-exited processes are skipped.

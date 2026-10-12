@@ -65,8 +65,12 @@ mcp-warden reap [--dry-run]
 ```
 
 For every state file whose mcp-warden process is dead: if the recorded child is still
-running *and its creation time matches*, kill it and all of its descendants, then delete
-the state file. `--dry-run` reports what would happen and changes nothing.
+running *and its creation time matches*, kill it and all of its descendants. On Linux and
+macOS, also kill anything still in the child's **process group** that was created after the
+child. That catches grandchildren whose parent already exited, which are no longer
+descendants of anything. Then delete the state file. If the child's PID now belongs to a
+different process, nothing is touched. `--dry-run` reports what would happen and changes
+nothing.
 
 ## scan
 
