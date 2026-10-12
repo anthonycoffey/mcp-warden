@@ -41,4 +41,5 @@ On Windows without a C toolchain `-race` is unavailable; CI runs it.
 ## Commit format
 
 `<type>: <description> [SPEC-XXX]`, with types `feat`, `fix`, `refactor`, `docs`, `test`,
-`style`. Branches: `feature/`, `fix/`, `refactor/`. Changes land on `main` through PRs.
+`style`. For now changes are pushed straight to `main`; a PR workflow (branches `feature/`,
+`fix/`, `refactor/`) starts once the codebase is established.
