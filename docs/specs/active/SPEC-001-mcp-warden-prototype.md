@@ -1,7 +1,7 @@
 ---
 id: SPEC-001
 title: 'mcp-warden prototype: supervised stdio proxy for MCP servers'
-status: ready
+status: review-pending
 created: 2026-10-12
 author: 'Anthony Coffey'
 reviewers: []
@@ -390,41 +390,41 @@ It can be overridden with `--state-dir` or `MCP_WARDEN_STATE_DIR`.
 
 ## Edge cases
 
-- [ ] **Child fails before the first `initialize`.** It's restarted under the normal backoff,
+- [x] **Child fails before the first `initialize`.** It's restarted under the normal backoff,
       and nothing is replayed because nothing was captured yet.
-- [ ] **Child never responds to the replayed `initialize`.** A timeout (default 10s) counts
+- [x] **Child never responds to the replayed `initialize`.** A timeout (default 10s) counts
       as a crash for backoff and circuit purposes.
-- [ ] **Restarted server reports a different `protocolVersion` or a smaller capability set.**
+- [x] **Restarted server reports a different `protocolVersion` or a smaller capability set.**
       Log a warning and still emit `list_changed`. Don't fail.
-- [ ] **Client sends `notifications/cancelled` for an in-flight id.** Forward it and drop the
+- [x] **Client sends `notifications/cancelled` for an in-flight id.** Forward it and drop the
       id from the in-flight tracker, so a later crash doesn't send a duplicate error.
-- [ ] **JSON-RPC batch (array) messages** (allowed by older protocol revisions). Relay them
+- [x] **JSON-RPC batch (array) messages** (allowed by older protocol revisions). Relay them
       as-is and track each element's id best-effort.
-- [ ] **Malformed (non-JSON) line from the server.** Relay it unchanged (the client decides),
+- [x] **Malformed (non-JSON) line from the server.** Relay it unchanged (the client decides),
       count it as a protocol error, and log it.
-- [ ] **Line longer than the max size.** Discard up to the next newline, log an error, and
+- [x] **Line longer than the max size.** Discard up to the next newline, log an error, and
       answer with a JSON-RPC error if an id can be recovered.
-- [ ] **Two wardens configured with the same `--name`.** The second one appends `-<pid>` to
+- [x] **Two wardens configured with the same `--name`.** The second one appends `-<pid>` to
       its state file name and logs a warning.
-- [ ] **PID reuse after reboot.** `reap` only kills a PID whose process start time matches
+- [x] **PID reuse after reboot.** `reap` only kills a PID whose process start time matches
       `childStartedAt`.
-- [ ] **Command not found / not executable.** Exit immediately with a clear stderr message
+- [x] **Command not found / not executable.** Exit immediately with a clear stderr message
       and exit code 127, with no restart loop. Spawn errors aren't crashes.
-- [ ] **Windows: the warden is itself already inside a job** (some clients do this). Use
+- [x] **Windows: the warden is itself already inside a job** (some clients do this). Use
       nested jobs (Windows 8+). If assignment fails, fall back to tree-kill by PID enumeration
       and log a warning.
-- [ ] **Scan: access denied** on another user's or an elevated process. Count it as
+- [x] **Scan: access denied** on another user's or an elevated process. Count it as
       `unreadable` in the summary and exclude it from classification and killing.
-- [ ] **Scan: PID reused between scan and kill.** Re-read the create time just before
+- [x] **Scan: PID reused between scan and kill.** Re-read the create time just before
       killing, and skip with a warning if it changed.
-- [ ] **Scan: client restarts within one interval.** A server briefly looks orphaned. Only
+- [x] **Scan: client restarts within one interval.** A server briefly looks orphaned. Only
       `--auto-reap` acts on it, and only after `--min-age`, so a transient state is never
       killed.
-- [ ] **Scan: pattern false positive** (e.g. an editor that has `mcp` in a file path in its
+- [x] **Scan: pattern false positive** (e.g. an editor that has `mcp` in a file path in its
       command line). It's never killed unless it's `orphaned`. `--exclude <regex>` removes it.
-- [ ] **Scan: the `mcp-warden` binary itself matches the patterns.** Warden processes are
+- [x] **Scan: the `mcp-warden` binary itself matches the patterns.** Warden processes are
       always excluded from candidates.
-- [ ] **`processes.jsonl` grows without bound.** Rotate at 10 MiB, keeping 3 files
+- [x] **`processes.jsonl` grows without bound.** Rotate at 10 MiB, keeping 3 files
       (`history` reads across them).
 
 ## Acceptance criteria
@@ -464,30 +464,32 @@ It can be overridden with `--state-dir` or `MCP_WARDEN_STATE_DIR`.
 
 ## Tasks
 
-- [ ] Install the Go toolchain, `go mod init github.com/anthonycoffey/mcp-warden`, add
+- [x] Install the Go toolchain, `go mod init github.com/anthonycoffey/mcp-warden`, add
       `.gitignore`, `.golangci.yml`, `Makefile`/`Taskfile`
-- [ ] `testdata/fakeserver`: scriptable via env/flags (echo tools, crash-after-N, crash-on-start,
+- [x] `testdata/fakeserver`: scriptable via env/flags (echo tools, crash-after-N, crash-on-start,
       slow responses, spawn grandchild, emit garbage, emit oversized line)
-- [ ] `internal/jsonrpc`: framing + envelope parse (table-driven tests, fuzz test for framer)
-- [ ] `internal/procgroup`: Windows Job Object + Unix process group (tests that assert no
+- [x] `internal/jsonrpc`: framing + envelope parse (table-driven tests, fuzz test for framer)
+- [x] `internal/procgroup`: Windows Job Object + Unix process group (tests that assert no
       surviving grandchild)
-- [ ] `internal/supervisor`: backoff + circuit breaker (fake clock, deterministic tests)
-- [ ] `internal/proxy`: pumps, single stdout writer, in-flight tracker, buffer, handshake
+- [x] `internal/supervisor`: backoff + circuit breaker (fake clock, deterministic tests)
+- [x] `internal/proxy`: pumps, single stdout writer, in-flight tracker, buffer, handshake
       capture/replay, list_changed synthesis
-- [ ] `internal/metrics` + `internal/state`: counters, latency percentiles, atomic state files
-- [ ] `internal/logfile`: rotating writer
-- [ ] `internal/procscan`: Windows / Linux / macOS snapshot implementations + a smoke test
+- [x] `internal/metrics` + `internal/state`: counters, latency percentiles, atomic state files
+- [x] `internal/logfile`: rotating writer
+- [x] `internal/procscan`: Windows / Linux / macOS snapshot implementations + a smoke test
       that finds the test process itself with the correct PPID and command line
-- [ ] `internal/classify`: pure classifier + tree grouping (table-driven tests first)
-- [ ] `internal/history`: snapshot diff → events, JSONL writer with rotation, `history`
+- [x] `internal/classify`: pure classifier + tree grouping (table-driven tests first)
+- [x] `internal/history`: snapshot diff → events, JSONL writer with rotation, `history`
       aggregation
-- [ ] ADR-001: in-house process enumeration vs gopsutil
-- [ ] `cmd/mcp-warden`: `run`, `status`, `logs`, `reap`, `scan`, `watch`, `history`, `version`
-- [ ] Integration tests: end-to-end through the built binary against the fake server
-- [ ] Benchmark for per-message overhead
-- [ ] GitHub Actions: test matrix (win/linux/mac, `-race`), golangci-lint
-- [ ] Manual verification against Claude Desktop + a real `npx` server (acceptance 1–4)
-- [ ] Refactor pass, then README + `docs/` (architecture, protocol handling, ADRs, mermaid)
+- [x] ADR-001: in-house process enumeration vs gopsutil
+- [x] `cmd/mcp-warden`: `run`, `status`, `logs`, `reap`, `scan`, `watch`, `history`, `version`
+- [x] Integration tests: end-to-end through the built binary against the fake server
+- [x] Benchmark for per-message overhead
+- [x] GitHub Actions: test matrix (win/linux/mac, `-race`), golangci-lint
+- [ ] Manual verification against Claude Desktop + a real `npx` server (acceptance 1–4).
+      Partially done: acceptance 2 and 4 verified with a scripted client against a real Python
+      MCP server; acceptance 3 covered by e2e. Remaining: a live Claude Desktop session.
+- [x] Refactor pass, then README + `docs/` (architecture, protocol handling, ADRs, mermaid)
 
 ## Notes
 
@@ -498,3 +500,19 @@ It can be overridden with `--state-dir` or `MCP_WARDEN_STATE_DIR`.
 - Windows Job Objects: https://learn.microsoft.com/windows/win32/procthread/job-objects
 - Candidate follow-ups: SPEC-002 dashboard + `wrap`, SPEC-003 policy layer (allow/deny tool
   calls, audit log), SPEC-004 Streamable HTTP transport.
+
+### Implementation notes (deltas from the design above)
+
+- The restart policy package is `internal/restart`, not `internal/supervisor`. The
+  supervisor state machine lives in the proxy actor (ADR-002), which leaves only the pure
+  backoff and breaker policy to package.
+- The fake server lives at `internal/fakeserver` rather than `testdata/`, so it's built and
+  linted like the rest of the code. End-to-end tests are in `e2e/`.
+- The state file gained `wardenCreatedAt`, and `childStartedAt` holds the OS creation time
+  (not mcp-warden's clock). Both are used for identity checks (ADR-004).
+- `scan --kill` gained `--pid` to narrow a kill to specific trees (also used by e2e tests so
+  they never touch real processes).
+- "`mcp-warden` matches the patterns" is handled by stripping the word before matching
+  rather than by a default exclude, so real servers under a `mcp-warden` path are still found.
+- macOS scans report RSS as 0 (unknown): libproc needs cgo.
+- `-race` runs in CI only. The Windows dev machine has no C toolchain.
