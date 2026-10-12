@@ -1,0 +1,45 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - errorlint
+    - gocritic
+    - misspell
+    - nilerr
+    - prealloc
+    - revive
+    - unconvert
+    - unparam
+    - usestdlibvars
+  settings:
+    errcheck:
+      # Best-effort cleanup (closing files/handles, removing temp files) is
+      # deliberately unchecked; everything else must be handled.
+      exclude-functions:
+        - (*os.File).Close
+        - (*os.File).Seek
+        - (*bufio.Writer).Flush
+        - (*text/tabwriter.Writer).Flush
+        - golang.org/x/sys/windows.CloseHandle
+        - os.Remove
+        - (io.Closer).Close
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - fmt.Fprint
+    revive:
+      rules:
+        - name: exported
+          disabled: true # internal packages; doc comments are enforced by review
+  exclusions:
+    presets:
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        linters: [errcheck, unparam, prealloc]
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
